@@ -1,0 +1,64 @@
+#!/bin/bash
+# info: add open_basedir domain
+
+
+#----------------------------------------------------------#
+#                    Variable&Function                     #
+#----------------------------------------------------------#
+
+# TODO: Не проверяется что open_basedir не выходит за пределы домашнего каталога
+
+# Argument definition
+user=$1
+domain=$2
+dir=$3
+
+# Includes
+source $VESTA/func/main.sh
+source $VESTA/func/domain.sh
+source $VESTA/conf/vesta.conf
+
+# Additional argument formatting
+format_domain
+format_domain_idn
+
+
+#----------------------------------------------------------#
+#                    Verifications                         #
+#----------------------------------------------------------#
+
+check_args '3' "$#" 'USER DOMAIN DIR'
+is_system_enabled "$WEB_SYSTEM" 'WEB_SYSTEM'
+is_object_valid 'user' 'USER' "$user"
+is_object_unsuspended 'user' 'USER' "$user"
+is_object_valid 'web' 'DOMAIN' "$domain"
+is_object_unsuspended 'web' 'DOMAIN' "$domain"
+
+
+#----------------------------------------------------------#
+#                       Action                             #
+#----------------------------------------------------------#
+
+# Parsing domain values
+get_domain_values 'web'
+
+# Preparing basedir values for the template substitution
+if [ -z "$BASEDIR" ]; then
+    BASEDIR="$dir"
+else
+    BASEDIR="$BASEDIR,$dir"
+fi
+prepare_web_domain_values
+
+
+# TODO: редактирование конфигов apache
+#----------------------------------------------------------#
+#                       Vesta                              #
+#----------------------------------------------------------#
+
+update_object_value 'web' 'DOMAIN' "$domain" '$BASEDIR' "$BASEDIR"
+
+log_history "added open_basedir $dir for $domain"
+log_event "$OK" "$ARGUMENTS"
+
+exit

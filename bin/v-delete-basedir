@@ -1,0 +1,64 @@
+#!/bin/bash
+# info: delete open_basedir domain
+
+
+#----------------------------------------------------------#
+#                    Variable&Function                     #
+#----------------------------------------------------------#
+
+# TODO: Не проверяется что open_basedir не выходит за пределы домашнего каталога
+
+# Argument definition
+user=$1
+domain=$2
+dir=$3
+
+
+# Includes
+source $VESTA/func/main.sh
+source $VESTA/func/domain.sh
+source $VESTA/conf/vesta.conf
+
+# Additional argument formatting
+format_domain
+format_domain_idn
+
+
+#----------------------------------------------------------#
+#                    Verifications                         #
+#----------------------------------------------------------#
+
+check_args '3' "$#" 'USER DOMAIN DIR'
+is_system_enabled "$WEB_SYSTEM" 'WEB_SYSTEM'
+is_object_valid 'user' 'USER' "$user"
+is_object_unsuspended 'user' 'USER' "$user"
+is_object_valid 'web' 'DOMAIN' "$domain"
+is_object_unsuspended 'web' 'DOMAIN' "$domain"
+get_domain_values 'web'
+if [ -z "$(echo $BASEDIR |tr ',' '\n' |grep ^$dir$)" ]; then
+    check_result $E_NOTEXIST "open_basedir $dir doesn't exist"
+fi
+
+#----------------------------------------------------------#
+#                       Action                             #
+#----------------------------------------------------------#
+
+# Preparing basedir values for the template substitution
+BASEDIR=$(echo "$BASEDIR" |\
+    sed -e "s/,/\n/g" |\
+    sed -e "s/^$dir$//g" |\
+    sed -e "/^$/d" |\
+    sed -e ':a;N;$!ba;s/\n/,/g')
+prepare_web_domain_values
+
+# TODO: редактирование конфигов apache
+#----------------------------------------------------------#
+#                       Vesta                              #
+#----------------------------------------------------------#
+
+update_object_value 'web' 'DOMAIN' "$domain" '$BASEDIR' "$BASEDIR"
+
+log_history "deleted open_basedir $dir for $domain"
+log_event "$OK" "$ARGUMENTS"
+
+exit
